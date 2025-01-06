@@ -1,0 +1,173 @@
+
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract NFTproject {
+    uint256 public totalCollections = 0;
+
+    struct NFT {
+        uint256 tokenId;
+        uint256 collectionId;
+        address owner;
+        string name;
+        string collectionName; 
+        bool exists;
+    }
+
+    struct Collection {
+        uint256 collectionId;
+        string Cname;
+        address owner;
+        bool exists;
+    }
+
+    // Mappings
+    mapping(uint256 => NFT) public NFTs;                
+    mapping(address => uint256[]) public ownerNFTs;     
+    mapping(uint256 => Collection) public collections;   
+    mapping(address => uint256[]) public ownerCollections; 
+    mapping(uint256 => uint256[]) public collectionNFTs;  
+
+    // Array to store all collection IDs for iteration
+    uint256[] public allCollectionIds;
+
+    // Events
+    event NFTMinted(uint256 tokenId, uint256 collectionId, address owner, string name, string collectionName);
+    event CollectionCreated(uint256 collectionId, address indexed owner, string name);
+
+    // Generate random token ID
+    function generateRandomTokenId() private view returns (uint256) {
+        return uint256(
+            keccak256(
+                abi.encodePacked(
+                    block.timestamp,
+                    block.difficulty,
+                    msg.sender
+                )
+            )
+        );
+    }
+
+    // Generate random collection ID
+    function generateRandomCollectionId() private view returns (uint256) {
+        return uint256(
+            keccak256(
+                abi.encodePacked(
+                    block.timestamp,
+                    block.difficulty,
+                    msg.sender,
+                    totalCollections
+                )
+            )
+        );
+    }
+
+    // Create collection
+    function createCollection(string memory name) public returns (uint256) {
+        require(bytes(name).length > 0, "Collection name cannot be empty");
+
+        uint256 randomCollectionId = generateRandomCollectionId();
+        while (collections[randomCollectionId].exists) {
+            randomCollectionId = generateRandomCollectionId();
+        }
+
+        Collection memory newCollection = Collection({
+            collectionId: randomCollectionId,
+            Cname: name,
+            owner: msg.sender,
+            exists: true
+        });
+
+        collections[randomCollectionId] = newCollection;
+        ownerCollections[msg.sender].push(randomCollectionId);
+        allCollectionIds.push(randomCollectionId); // Store collection ID for iteration
+        totalCollections++;
+
+        emit CollectionCreated(randomCollectionId, msg.sender, name);
+        return randomCollectionId;
+    }
+
+    // Mint NFT
+    function mintNFT(uint256 collectionId, string memory _name) public returns (NFT memory) {
+        require(collections[collectionId].exists, "Collection does not exist");
+        require(collections[collectionId].owner == msg.sender, "You do not own this collection");
+        require(bytes(_name).length > 0, "Name cannot be empty");
+
+        uint256 randomTokenId = generateRandomTokenId();
+        while (NFTs[randomTokenId].exists) {
+            randomTokenId = generateRandomTokenId();
+        }
+
+        string memory collectionName = collections[collectionId].Cname;
+
+        NFT memory newNFT = NFT({
+            tokenId: randomTokenId,
+            collectionId: collectionId,
+            owner: msg.sender,
+            name: _name,
+            collectionName: collectionName,
+            exists: true
+        });
+
+        NFTs[randomTokenId] = newNFT;
+        ownerNFTs[msg.sender].push(randomTokenId);
+        collectionNFTs[collectionId].push(randomTokenId);
+
+        emit NFTMinted(randomTokenId, collectionId, msg.sender, _name, collectionName);
+        return newNFT;
+    }
+
+    // Get collection ID by collection name
+    function getCollectionIdByName(string memory name) public view returns (uint256) {
+        require(bytes(name).length > 0, "Name cannot be empty");
+
+        for (uint256 i = 0; i < allCollectionIds.length; i++) {
+            uint256 collectionId = allCollectionIds[i];
+            if (
+                keccak256(abi.encodePacked(collections[collectionId].Cname)) == 
+                keccak256(abi.encodePacked(name))
+            ) {
+                return collectionId;
+            }
+        }
+        revert("Collection not found");
+    }
+
+    // Get all NFTs by owner address
+    function getNFTsByOwnerAddress(address owner) public view returns (NFT[] memory) {
+        uint256[] memory tokenIds = ownerNFTs[owner];
+        NFT[] memory userNFTs = new NFT[](tokenIds.length);
+        
+        for (uint256 i = 0; i < tokenIds.length; i++) {
+            userNFTs[i] = NFTs[tokenIds[i]];
+        }
+        
+        return userNFTs;
+    }
+
+    // Get all NFTs in a collection
+    function getCollectionNFTsByCollectionId(uint256 collectionId) public view returns (NFT[] memory) {
+        require(collections[collectionId].exists, "Collection does not exist");
+        
+        uint256[] memory tokenIds = collectionNFTs[collectionId];
+        NFT[] memory nftsInCollection = new NFT[](tokenIds.length);
+        
+        for (uint256 i = 0; i < tokenIds.length; i++) {
+            nftsInCollection[i] = NFTs[tokenIds[i]];
+        }
+        
+        return nftsInCollection;
+    }
+
+    // Get collections by address
+    function getCollections_ID_ByOwner(address _owner) public view returns (Collection[] memory) {
+        uint256[] memory collectionIds = ownerCollections[_owner];
+        Collection[] memory userCollections = new Collection[](collectionIds.length);
+        
+        for (uint256 i = 0; i < collectionIds.length; i++) {
+            userCollections[i] = collections[collectionIds[i]];
+        }
+        
+        return userCollections;
+    }
+}
