@@ -1,3 +1,8 @@
+// get collection id by address
+// insert (nft and id)
+// get nft by collection id 
+// get collection id by collection name
+// get all nft by address
 
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
@@ -41,7 +46,7 @@ contract NFTproject {
             keccak256(
                 abi.encodePacked(
                     block.timestamp,
-                    block.difficulty,
+                    block.difficulty, //block.prevrandao  difficulty replace with prevrandao
                     msg.sender
                 )
             )
@@ -54,7 +59,7 @@ contract NFTproject {
             keccak256(
                 abi.encodePacked(
                     block.timestamp,
-                    block.difficulty,
+                    block.difficulty,  //block.prevrandao
                     msg.sender,
                     totalCollections
                 )
@@ -62,9 +67,38 @@ contract NFTproject {
         );
     }
 
-    // Create collection
+
+    // isi may user restric nahi hay jitna collection bana sakty han 1 account par
+
+    // // Create collection
+    // function createCollection(string memory name) public returns (uint256) {
+    //     require(bytes(name).length > 0, "Collection name cannot be empty");
+
+    //     uint256 randomCollectionId = generateRandomCollectionId();
+    //     while (collections[randomCollectionId].exists) {
+    //         randomCollectionId = generateRandomCollectionId();
+    //     }
+
+    //     Collection memory newCollection = Collection({
+    //         collectionId: randomCollectionId,
+    //         Cname: name,
+    //         owner: msg.sender,
+    //         exists: true
+    //     });
+
+    //     collections[randomCollectionId] = newCollection;
+    //     ownerCollections[msg.sender].push(randomCollectionId);
+    //     allCollectionIds.push(randomCollectionId); // Store collection ID for iteration
+    //     totalCollections++;
+
+    //     emit CollectionCreated(randomCollectionId, msg.sender, name);
+    //     return randomCollectionId;
+    // }
+
+    // isi function may user restric hay ky o 1 collection bana sakty han  1 account par
     function createCollection(string memory name) public returns (uint256) {
         require(bytes(name).length > 0, "Collection name cannot be empty");
+        require(ownerCollections[msg.sender].length == 0, "You can only create one collection");
 
         uint256 randomCollectionId = generateRandomCollectionId();
         while (collections[randomCollectionId].exists) {
@@ -86,6 +120,10 @@ contract NFTproject {
         emit CollectionCreated(randomCollectionId, msg.sender, name);
         return randomCollectionId;
     }
+
+
+
+
 
     // Mint NFT
     function mintNFT(uint256 collectionId, string memory _name) public returns (NFT memory) {
@@ -133,6 +171,18 @@ contract NFTproject {
         revert("Collection not found");
     }
 
+    // Get collections ID by address
+    function getCollections_ID_ByOwner(address _owner) public view returns (Collection[] memory) {
+        uint256[] memory collectionIds = ownerCollections[_owner];
+        Collection[] memory userCollections = new Collection[](collectionIds.length);
+        
+        for (uint256 i = 0; i < collectionIds.length; i++) {
+            userCollections[i] = collections[collectionIds[i]];
+        }
+        
+        return userCollections;
+    }
+
     // Get all NFTs by owner address
     function getNFTsByOwnerAddress(address owner) public view returns (NFT[] memory) {
         uint256[] memory tokenIds = ownerNFTs[owner];
@@ -159,15 +209,5 @@ contract NFTproject {
         return nftsInCollection;
     }
 
-    // Get collections by address
-    function getCollections_ID_ByOwner(address _owner) public view returns (Collection[] memory) {
-        uint256[] memory collectionIds = ownerCollections[_owner];
-        Collection[] memory userCollections = new Collection[](collectionIds.length);
-        
-        for (uint256 i = 0; i < collectionIds.length; i++) {
-            userCollections[i] = collections[collectionIds[i]];
-        }
-        
-        return userCollections;
-    }
+    
 }
